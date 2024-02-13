@@ -1,5 +1,5 @@
 /**
- * @module @carpasse/node-open-source-project-template
+ * @module @carpasse/dapi-client
  */
 
 export const test = 'test';
