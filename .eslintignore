@@ -1,0 +1,9 @@
+bin/
+dist/
+coverage/
+dev/
+node_modules/
+.eslintrc.js
+.husky/
+.github/
+**/dist/*
