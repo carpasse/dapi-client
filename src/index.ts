@@ -1,5 +1,5 @@
 /**
  * @module @carpasse/dapi-client
  */
-
-export const test = 'test';
+export {DapiClientMixin, ClientStatus, type ClientDependencies} from './DapiClientMixin';
+export {createDapiClient} from './createDapiClient';
