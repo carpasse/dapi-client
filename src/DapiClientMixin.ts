@@ -1,4 +1,4 @@
-import {DapiDefinition, DapiMixin, type DapiFn} from '@carpasse/dapi';
+import {DapiDefinition, DapiMixin, type DapiFn, type DapiWrapper} from '@carpasse/dapi';
 import {AnyFunction, Constructor, ParamsExtract} from './types/utils';
 
 /**
@@ -36,10 +36,7 @@ function ClientMixin<
   DEPENDENCIES extends {
     client: CLIENT;
   },
-  T extends Constructor<{
-    getDependencies(): DEPENDENCIES;
-    setDependencies(newDeps: DEPENDENCIES): void;
-  }>
+  T extends DapiWrapper<DEPENDENCIES, {}, Constructor<{}>>
 >(
   definition: {
     close?: CloseFn<DEPENDENCIES>;
@@ -214,6 +211,7 @@ export function DapiClientMixin<
   },
   SuperClass: T
 ) {
+  // @ts-expect-error - TS doesn't understand dynamic mixins
   return ClientMixin(definition, DapiMixin(definition, SuperClass));
 }
 
