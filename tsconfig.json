@@ -6,7 +6,7 @@
     "baseUrl": ".",
     "forceConsistentCasingInFileNames": true,
     "lib": ["ES2023"],
-    "module": "ES2020",
+    "module": "ES2022",
     "moduleResolution": "Node",
     "noEmitHelpers": false,
     "noEmitOnError": true,
