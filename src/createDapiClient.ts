@@ -1,5 +1,5 @@
 import {DapiDefinition, DapiFns} from '@carpasse/dapi';
-import {DapiClientMixin, ClientDependencies, CloseFn, IsHealthyFn} from './DapiClientMixin';
+import {CloseFn, DapiClientMixin, IsHealthyFn} from './DapiClientMixin';
 import {Constructor} from './types/utils';
 
 /**
@@ -11,7 +11,9 @@ import {Constructor} from './types/utils';
  */
 export const createDapiClient = <
   CLIENT,
-  DEPENDENCIES extends ClientDependencies<CLIENT>,
+  DEPENDENCIES extends {
+    client: CLIENT;
+  },
   API extends DapiFns<DEPENDENCIES>,
   T extends Constructor<{}>
 >(

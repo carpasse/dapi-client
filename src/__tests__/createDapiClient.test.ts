@@ -2,7 +2,7 @@ import {describe, it, mock, beforeEach, Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import EventEmitter from 'node:events';
 import {DapiDefinition} from '@carpasse/dapi';
-import {ClientDependencies, ClientStatus} from '../DapiClientMixin';
+import {ClientStatus} from '../DapiClientMixin';
 import {createDapiClient} from '../createDapiClient';
 
 describe('createDapiClient', () => {
@@ -11,11 +11,10 @@ describe('createDapiClient', () => {
     foo?: string;
   };
   type Deps = {
+    client: Client;
     opts: Opts;
-  } & ClientDependencies<Client>;
-  type command1Mock = Mock<
-    (deps: {client: Client; opts: Opts}, a1?: string, a2?: string) => [typeof deps, typeof a1, typeof a2]
-  >;
+  };
+  type command1Mock = Mock<(deps: Deps, a1?: string, a2?: string) => [typeof deps, typeof a1, typeof a2]>;
   type DapiFnsDict = {
     command1: command1Mock;
   };
