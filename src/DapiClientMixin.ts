@@ -41,7 +41,7 @@ const validateDefinition = <
     isHealthy?: IsHealthyFn<DEPENDENCIES>;
   }
 ) => {
-  const {close: _close, isHealthy: _isHealthy, dependencies} = definition;
+  const {close: _close, isHealthy: _isHealthy, dependencies, fns} = definition;
 
   if (_close && typeof _close !== 'function') {
     throw new TypeError('close must be a function', {cause: {close: _close}});
@@ -51,15 +51,31 @@ const validateDefinition = <
     throw new TypeError('isHealthy must be a function', {cause: {_isHealthy}});
   }
 
+  if (!dependencies) {
+    throw new TypeError('Definition must have dependencies', {cause: {dependencies}});
+  }
+
   // @ts-expect-error - Make sure that the dependencies object does not have a dynamically added properties.
-  if (dependencies.close || dependencies.isHealthy || dependencies.status) {
+  if (dependencies.close || dependencies.isHealthy) {
     throw new TypeError(
-      'Dependencies cannot have a `close` or `isHealthy` or `status` property.\n' +
-        'Please remove it from the dependencies.',
+      'Dependencies cannot have a `close` or `isHealthy` properties.\n' +
+        'Please remove them from the dependencies object.',
       {
         cause: {dependencies}
       }
     );
+  }
+
+  if (!dependencies.client) {
+    throw new TypeError('Dependencies must have a client', {cause: {dependencies}});
+  }
+
+  if (typeof fns !== 'object' || fns === null) {
+    throw new TypeError('Definition must have a dictionary (`fns`) of Dapi functions', {cause: {fns}});
+  }
+
+  if (Object.values(fns).some((fn) => typeof fn !== 'function')) {
+    throw new TypeError("Definition's fns dictionary must only contain values of type fn", {cause: {fns}});
   }
 };
 
@@ -90,32 +106,33 @@ export function DapiClientMixin<
   };
   type Self = InstanceType<DapiWrapper<DapiClientDependencies, DAPI & DapiClientFns, T>>;
   const {close: _close, isHealthy: _isHealthy} = definition;
+  let _status = ClientStatus.OPEN;
 
   /**
    * Closes the client.
    * @param delay The delay before closing the client.
    */
   const close = async function (this: Self, deps: DapiClientDependencies, {delay}: {delay?: number} = {}) {
-    if (deps.status !== ClientStatus.OPEN) {
+    if (_status !== ClientStatus.OPEN) {
       return;
     }
 
     if (typeof _close === 'function') {
-      this.updateDependencies({status: ClientStatus.CLOSING} as Partial<DapiClientDependencies>);
+      _status = ClientStatus.CLOSING;
       await _close.call(this, deps, {delay});
     }
 
-    this.updateDependencies({status: ClientStatus.CLOSED} as Partial<DapiClientDependencies>);
+    _status = ClientStatus.CLOSED;
   };
 
-  const status = (deps: DapiClientDependencies) => deps.status;
+  const status = (_deps: DapiClientDependencies) => _status;
 
   /**
    * Returns whether the client is healthy.
    * @returns true if the client is healthy and false otherwise.
    */
   const isHealthy = async function (this: Self, deps: DapiClientDependencies) {
-    if (deps.status !== ClientStatus.OPEN) {
+    if (_status !== ClientStatus.OPEN) {
       return false;
     }
 
@@ -129,10 +146,7 @@ export function DapiClientMixin<
   return DapiMixin(
     {
       ...definition,
-      dependencies: {
-        ...definition.dependencies,
-        status: ClientStatus.OPEN
-      },
+      dependencies: definition.dependencies,
       fns: {
         ...definition.fns,
         close,

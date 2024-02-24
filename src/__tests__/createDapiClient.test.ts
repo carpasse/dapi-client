@@ -39,7 +39,7 @@ describe('createDapiClient', () => {
     definition = {dependencies, fns, type};
   });
 
-  it('should create an api', () => {
+  it('should create an dapi', () => {
     const instance = createDapiClient(definition);
 
     assert.equal(typeof instance.command1, 'function');

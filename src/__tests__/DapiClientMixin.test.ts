@@ -1,7 +1,7 @@
 import {describe, it, mock, beforeEach, Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {DapiDefinition} from '@carpasse/dapi';
-import {DapiClientMixin, ClientDependencies, ClientStatus, CloseFn, IsHealthyFnFacade} from '../DapiClientMixin';
+import {DapiClientMixin, ClientStatus, CloseFn} from '../DapiClientMixin';
 
 class BaseTestClass {
   test = 'test';
@@ -13,10 +13,11 @@ describe('DapiClientMixin', () => {
     foo?: string;
   };
   type Deps = {
+    client: Client;
     opts: Opts;
-  } & ClientDependencies<Client>;
+  };
   type DapiFnsDict = {
-    command1: Mock<(deps: Deps) => string>;
+    command1: Mock<(deps: Deps, a?: string) => string>;
     command2: Mock<
       (deps: {client: Client; opts: Opts}, a1?: string, a2?: string) => [typeof deps, typeof a1, typeof a2]
     >;
@@ -46,7 +47,7 @@ describe('DapiClientMixin', () => {
   it('should throw if the passed definition does not have Dapi functions dictionary', () => {
     assert.throws(
       () => {
-        // @ts-expect-error - no commands
+        // @ts-expect-error - no fns dictionary
         DapiClientMixin({dependencies, type}, BaseTestClass);
       },
       {
@@ -54,6 +55,34 @@ describe('DapiClientMixin', () => {
           fns: undefined
         },
         message: 'Definition must have a dictionary (`fns`) of Dapi functions',
+        name: 'TypeError'
+      }
+    );
+
+    assert.throws(
+      () => {
+        // @ts-expect-error - no fns dictionary
+        DapiClientMixin({dependencies, fns: null, type}, BaseTestClass);
+      },
+      {
+        cause: {
+          fns: null
+        },
+        message: 'Definition must have a dictionary (`fns`) of Dapi functions',
+        name: 'TypeError'
+      }
+    );
+
+    assert.throws(
+      () => {
+        // @ts-expect-error - no fns dictionary
+        DapiClientMixin({dependencies, fns: {foo: null}, type}, BaseTestClass);
+      },
+      {
+        cause: {
+          fns: {foo: null}
+        },
+        message: "Definition's fns dictionary must only contain values of type fn",
         name: 'TypeError'
       }
     );
@@ -108,25 +137,6 @@ describe('DapiClientMixin', () => {
       );
     });
 
-    it('should add close, isHealthy and status fns to the dependencies', async () => {
-      const instance = new (DapiClientMixin(definition, BaseTestClass))();
-      const {close, isHealthy, status, ...deps} = instance.getDependencies();
-
-      assert.deepEqual(deps, dependencies);
-      assert.equal(typeof close, 'function');
-      assert.equal(typeof isHealthy, 'function');
-      assert.equal(typeof status, 'function');
-      assert.equal(status && status(), ClientStatus.OPEN);
-      assert.equal(isHealthy && (await isHealthy()), true);
-
-      if (close) {
-        close();
-      }
-
-      assert.equal(status && status(), ClientStatus.CLOSED);
-      assert.equal(isHealthy && (await isHealthy()), false);
-    });
-
     it('should change the state to closing and then to close once it finishes closing', async () => {
       const closeFn: CloseFn<Deps> = mock.fn(async (_deps, options = {delay: 0}) => {
         await new Promise((resolve) => setTimeout(resolve, options.delay));
@@ -140,19 +150,19 @@ describe('DapiClientMixin', () => {
         },
         BaseTestClass
       ))();
-      const {close, status} = instance.getDependencies();
+      const status = instance.status();
 
-      assert.equal(status && status(), ClientStatus.OPEN);
+      assert.equal(status, ClientStatus.OPEN);
 
-      const closePromise = close && close({delay: 1});
+      const closePromise = instance.close({delay: 1});
 
-      assert.equal(status && status(), ClientStatus.CLOSING);
+      assert.equal(instance.status(), ClientStatus.CLOSING);
       assert.equal(closeFnMock.callCount(), 1);
       assert.deepEqual(closeFnMock.calls[0].arguments, [instance.getDependencies(), {delay: 1}]);
       assert.equal(closeFnMock.calls[0].this, instance);
 
       await closePromise;
-      assert.equal(status && status(), ClientStatus.CLOSED);
+      assert.equal(instance.status(), ClientStatus.CLOSED);
     });
 
     it('should throw if the close command throws', async () => {
@@ -167,9 +177,8 @@ describe('DapiClientMixin', () => {
         },
         BaseTestClass
       ))();
-      const {close} = instance.getDependencies();
 
-      assert.rejects(async () => close && close(), {
+      assert.rejects(async () => instance.close(), {
         message: 'Failed to close',
         name: 'Error'
       });
@@ -180,19 +189,18 @@ describe('DapiClientMixin', () => {
         await new Promise((resolve) => setTimeout(resolve, options.delay));
       });
 
-      const instance = new (DapiClientMixin(
+      const {close, isHealthy, status} = new (DapiClientMixin(
         {
           ...definition,
           close: closeFn
         },
         BaseTestClass
       ))();
-      const {close, status, isHealthy} = instance.getDependencies();
 
-      assert.equal(status && status(), ClientStatus.OPEN);
-      assert.equal(isHealthy && (await isHealthy()), true);
+      assert.equal(status(), ClientStatus.OPEN);
+      assert.equal(await isHealthy(), true);
 
-      const closePromise = close && close({delay: 1});
+      const closePromise = close({delay: 1});
 
       assert.equal(status && status(), ClientStatus.CLOSING);
       assert.equal(isHealthy && (await isHealthy()), false);
@@ -203,8 +211,8 @@ describe('DapiClientMixin', () => {
     });
 
     it('should be possible to pass a custom isHealthy fn', async () => {
-      const isHealthyFn: IsHealthyFnFacade<Deps> = mock.fn(async () => true);
-      const isHealthyFnMock = (isHealthyFn as Mock<IsHealthyFnFacade<Deps>>).mock;
+      const isHealthyFn = mock.fn(async () => true);
+      const isHealthyFnMock = (isHealthyFn as Mock<typeof isHealthy>).mock;
       const instance = new (DapiClientMixin(
         {
           ...definition,
@@ -212,7 +220,7 @@ describe('DapiClientMixin', () => {
         },
         BaseTestClass
       ))();
-      const {isHealthy} = instance.getDependencies();
+      const {isHealthy} = instance;
 
       assert.equal(isHealthy && (await isHealthy()), true);
       assert.equal(isHealthyFnMock.callCount(), 1);
@@ -220,7 +228,7 @@ describe('DapiClientMixin', () => {
       assert.deepEqual(isHealthyFnMock.calls[0].arguments, [instance.getDependencies()]);
     });
 
-    it('commands should be bound to the instance and the first arg to the instance dependencies', async () => {
+    it('DAPI fns should be bound to the instance and the first arg to the instance dependencies', async () => {
       const instance = new (DapiClientMixin(definition, BaseTestClass))();
       const {command1, command2, command3} = instance;
 
@@ -275,30 +283,13 @@ describe('DapiClientMixin', () => {
 
       assert.throws(
         () => {
-          instance.setDependencies(undefined as unknown as Deps);
+          instance.setDependencies(undefined as unknown as Deps & {status: ClientStatus});
         },
         {
           cause: {
             dependencies: undefined
           },
           message: 'Dependencies must be defined',
-          name: 'TypeError'
-        }
-      );
-    });
-
-    it('should throw if you try to set dependencies without a client', () => {
-      const instance = new (DapiClientMixin(definition, BaseTestClass))();
-
-      assert.throws(
-        () => {
-          instance.setDependencies({} as unknown as Deps);
-        },
-        {
-          cause: {
-            dependencies: {}
-          },
-          message: 'Dependencies must have a client',
           name: 'TypeError'
         }
       );
@@ -312,42 +303,22 @@ describe('DapiClientMixin', () => {
       instance.setDependencies(newDependencies);
 
       assert.deepEqual(instance.getDependencies(), newDependencies);
-      assert.equal(instance.getClient(), newClient);
     });
 
-    it('should be possible to set the client', () => {
+    it('should be possible to set the client only', () => {
       const instance = new (DapiClientMixin(definition, BaseTestClass))();
       const newClient = {method1: () => 'newClient.method1'};
       const oldDependencies = instance.getDependencies();
 
-      instance.setClient(newClient);
+      instance.updateDependencies({client: newClient});
 
-      assert.equal(instance.getClient(), newClient);
       assert.deepEqual(instance.getDependencies(), {...oldDependencies, client: newClient});
-    });
-
-    it('should throw if you try to set a falsy client', () => {
-      const instance = new (DapiClientMixin(definition, BaseTestClass))();
-
-      assert.throws(
-        () => {
-          instance.setClient(undefined as unknown as Client);
-        },
-        {
-          cause: {
-            client: undefined
-          },
-          message: 'Client cannot be falsy',
-          name: 'TypeError'
-        }
-      );
     });
 
     it('should be possible to get the client with the getter and the dependencies getter', () => {
       const instance = new (DapiClientMixin(definition, BaseTestClass))();
 
-      assert.equal(instance.getClient(), definition.dependencies.client);
-      assert.equal(instance.getClient(), instance.getDependencies().client);
+      assert.equal(definition.dependencies.client, instance.getDependencies().client);
     });
   });
 });
