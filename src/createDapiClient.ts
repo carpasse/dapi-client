@@ -3,7 +3,8 @@ import {CloseFn, DapiClientMixin, IsHealthyFn} from './DapiClientMixin';
 import {Constructor} from './types/utils';
 
 /**
- * Creates a client DapiWrapper instance.
+ * Creates a client DapiWrapper instance with appending 3 pure fns to the DAPI fns dictionary.
+ * @remarks The 3 pure fns are `close`, `isHealthy` and `status` which are used to close the client, check if the client is healthy and get the client status respectively.
  * @public
  * @param definition - The API definition.
  * @param SuperClass - The super class.
