@@ -112,17 +112,26 @@ export function DapiClientMixin<
    * Closes the client.
    * @param delay The delay before closing the client.
    */
-  const close = async function (this: Self, deps: DapiClientDependencies, {delay}: {delay?: number} = {}) {
+  // eslint-disable-next-line @typescript-eslint/promise-function-async
+  const close = function (this: Self, deps: DapiClientDependencies, {delay}: {delay?: number} = {}) {
     if (_status !== ClientStatus.OPEN) {
       return;
     }
 
     if (typeof _close === 'function') {
       _status = ClientStatus.CLOSING;
-      await _close.call(this, deps, {delay});
+      const response = _close.call(this, deps, {delay});
+
+      if (response instanceof Promise) {
+        return response.then(() => {
+          _status = ClientStatus.CLOSED;
+        });
+      }
     }
 
     _status = ClientStatus.CLOSED;
+
+    return undefined;
   };
 
   const status = (_deps: DapiClientDependencies) => _status;
