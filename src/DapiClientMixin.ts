@@ -131,7 +131,8 @@ export function DapiClientMixin<
    * Returns whether the client is healthy.
    * @returns true if the client is healthy and false otherwise.
    */
-  const isHealthy = async function (this: Self, deps: DapiClientDependencies) {
+  // eslint-disable-next-line @typescript-eslint/promise-function-async
+  const isHealthy = function (this: Self, deps: DapiClientDependencies) {
     if (_status !== ClientStatus.OPEN) {
       return false;
     }
