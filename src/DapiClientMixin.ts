@@ -134,7 +134,7 @@ export function DapiClientMixin<
     return undefined;
   };
 
-  const status = (_deps: DapiClientDependencies) => _status;
+  const status = () => _status;
 
   /**
    * Returns whether the client is healthy.
