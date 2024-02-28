@@ -1,6 +1,6 @@
 /* eslint-disable no-invalid-this */
 import {DapiDefinition, DapiMixin, type DapiFn, type DapiWrapper} from '@carpasse/dapi';
-import {AnyFunction, Constructor} from './types/utils';
+import {AnyFunction, Constructor} from './types/utils.js';
 
 /**
  * The status of the client.

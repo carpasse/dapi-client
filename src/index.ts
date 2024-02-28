@@ -1,5 +1,5 @@
 /**
  * @module @carpasse/dapi-client
  */
-export {DapiClientMixin, ClientStatus} from './DapiClientMixin';
-export {createDapiClient} from './createDapiClient';
+export {DapiClientMixin, ClientStatus} from './DapiClientMixin.js';
+export {createDapiClient} from './createDapiClient.js';

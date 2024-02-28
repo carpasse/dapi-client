@@ -1,6 +1,6 @@
 import {DapiDefinition, DapiFns} from '@carpasse/dapi';
-import {CloseFn, DapiClientMixin, IsHealthyFn} from './DapiClientMixin';
-import {Constructor} from './types/utils';
+import {CloseFn, DapiClientMixin, IsHealthyFn} from './DapiClientMixin.js';
+import {Constructor} from './types/utils.js';
 
 /**
  * Creates a client DapiWrapper instance with appending 3 pure fns to the DAPI fns dictionary.
